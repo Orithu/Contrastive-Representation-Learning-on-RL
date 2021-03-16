@@ -34,6 +34,7 @@ class Agent():
     self.discount = args.discount
     self.norm_clip = args.norm_clip
     self.coeff = 0.01 if args.game in ['pong', 'boxing', 'private_eye', 'freeway'] else 1.
+    self.coeff = self.coeff if args.contrastive else 0
 
     self.online_net = DQN(args, self.action_space).to(device=args.device)
     self.momentum_net = DQN(args, self.action_space).to(device=args.device)
