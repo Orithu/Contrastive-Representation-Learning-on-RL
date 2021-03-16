@@ -132,7 +132,7 @@ class DQN(nn.Module):
     # self.W_c = nn.Parameter(torch.rand(args.hidden_size, 128))
     # self.b_h = nn.Parameter(torch.zeros(args.hidden_size))
     # self.b_c = nn.Parameter(torch.zeros(128))
-    self.W = nn.Parameter(torch.rand(128, 128))
+    # self.W = nn.Parameter(torch.rand(128, 128))
 
   def forward(self, x, log=False):
     x = self.convs(x)

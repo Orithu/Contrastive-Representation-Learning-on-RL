@@ -16,7 +16,7 @@ from torch.nn.utils import clip_grad_norm_
 import kornia.augmentation as aug
 import torch.nn as nn
 import torch.nn.functional as F 
-from model import DQN
+from SimSiamModel import DQN
 
 random_shift = nn.Sequential(aug.RandomCrop((80, 80)), nn.ReplicationPad2d(4), aug.RandomCrop((84, 84)))
 aug = random_shift
