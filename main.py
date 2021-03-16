@@ -20,6 +20,7 @@ import torch
 from tqdm import trange
 
 from agent import Agent
+from agentSimSiam import AgentSimsiam
 from env import Env
 from memory import ReplayMemory
 from test import test
@@ -57,7 +58,7 @@ parser.add_argument('--learn-start', type=int, default=int(1600), metavar='STEPS
 parser.add_argument('--evaluate', action='store_true', help='Evaluate only')
 parser.add_argument('--evaluation-interval', type=int, default=10000, metavar='STEPS', help='Number of training steps between evaluations')
 parser.add_argument('--evaluation-episodes', type=int, default=10, metavar='N', help='Number of evaluation episodes to average over')
-parser.add_argument('--contrastive', action='store_true',default=True, help='whether to use Contrastive Learning')
+parser.add_argument('--contrastive', type=str, choices=['moco','simsiam'], default=None, help='whether to use Contrastive Learning')
 # TODO: Note that DeepMind's evaluation method is running the latest agent for 500K frames ever every 1M steps
 parser.add_argument('--evaluation-size', type=int, default=500, metavar='N', help='Number of transitions to use for validating Q')
 parser.add_argument('--render', action='store_true', help='Display screen (testing only)')
@@ -79,10 +80,10 @@ if not os.path.exists(results_dir):
   os.makedirs(results_dir)
 metrics = {'steps': [], 'rewards': [], 'Qs': [], 'best_avg_reward': -float('inf')}
 np.random.seed(args.seed)
-torch.manual_seed(np.random.randint(1, 10000))
+torch.manual_seed(args.seed)
 if torch.cuda.is_available() and not args.disable_cuda:
   args.device = torch.device('cuda')
-  torch.cuda.manual_seed(np.random.randint(1, 10000))
+  torch.cuda.manual_seed(args.seed)
   torch.backends.cudnn.enabled = args.enable_cudnn
 else:
   args.device = torch.device('cpu')
@@ -117,7 +118,10 @@ env.train()
 action_space = env.action_space()
 
 # Agent
-dqn = Agent(args, env)
+if args.contrastive == 'simsiam':
+  dqn = Agent(args, env)
+else: 
+  dqn = Agent(args, env)
 
 # If a model is provided, and evaluate is fale, presumably we want to resume, so try to load memory
 if args.model is not None and not args.evaluate:
@@ -174,7 +178,8 @@ else:
       if T % args.replay_frequency == 0:
         #for _ in range(4):
         dqn.learn(mem)  # Train with n-step distributional double-Q learning
-        dqn.update_momentum_net() # MoCo momentum upate
+        if args.contrastive == 'moco':
+          dqn.update_momentum_net() # MoCo momentum upate
 
       if T % args.evaluation_interval == 0:
         dqn.eval()  # Set DQN (online network) to evaluation mode
