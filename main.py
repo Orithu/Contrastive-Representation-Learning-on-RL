@@ -19,8 +19,8 @@ import numpy as np
 import torch
 from tqdm import trange
 
-from agent import Agent
-from agentSimSiam import AgentSimsiam
+from agent.agent import Agent
+from agent.agentSimSiam import AgentSimsiam
 from env import Env
 from memory import ReplayMemory
 from test import test

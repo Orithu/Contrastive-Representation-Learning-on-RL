@@ -15,12 +15,20 @@ from torch import optim
 from torch.nn.utils import clip_grad_norm_
 import kornia.augmentation as aug
 import torch.nn as nn
-from model import DQN
+import torch.nn.functional as F 
+from model.SimSiamModel import DQN
 
 random_shift = nn.Sequential(aug.RandomCrop((80, 80)), nn.ReplicationPad2d(4), aug.RandomCrop((84, 84)))
 aug = random_shift
 
-class Agent():
+
+def D(p,z):
+  z = z.detach()
+  p = F.normalize(p, dim=1)
+  z = F.normalize(z, dim=1)
+  return -(p*z).sum(dim=1).mean()
+
+class AgentSimsiam():
   def __init__(self, args, env):
     self.args = args
     self.action_space = env.action_space()
@@ -37,7 +45,7 @@ class Agent():
     self.coeff = self.coeff if args.contrastive else 0
 
     self.online_net = DQN(args, self.action_space).to(device=args.device)
-    self.momentum_net = DQN(args, self.action_space).to(device=args.device)
+    # self.momentum_net = DQN(args, self.action_space).to(device=args.device)
     if args.model:  # Load pretrained model if provided
       if os.path.isfile(args.model):
         state_dict = torch.load(args.model, map_location='cpu')  # Always load tensors onto CPU by default, will shift to GPU if necessary
@@ -51,8 +59,8 @@ class Agent():
         raise FileNotFoundError(args.model)
 
     self.online_net.train()
-    self.initialize_momentum_net()
-    self.momentum_net.train()
+    # self.initialize_momentum_net()
+    # self.momentum_net.train()
 
     self.target_net = DQN(args, self.action_space).to(device=args.device)
     self.update_target_net()
@@ -60,9 +68,9 @@ class Agent():
     for param in self.target_net.parameters():
       param.requires_grad = False
 
-    for param in self.momentum_net.parameters():
-      param.requires_grad = False
-    self.optimiser = optim.Adam(self.online_net.parameters(), lr=args.learning_rate, eps=args.adam_eps)
+    # for param in self.momentum_net.parameters():
+    #   param.requires_grad = False
+    # self.optimiser = optim.Adam(self.online_net.parameters(), lr=args.learning_rate, eps=args.adam_eps)
 
   # Resets noisy weights in all linear layers (of online net only)
   def reset_noise(self):
@@ -83,16 +91,23 @@ class Agent():
     idxs, states, actions, returns, next_states, nonterminals, weights = mem.sample(self.batch_size)
     aug_states_1 = aug(states).to(device=self.args.device)
     aug_states_2 = aug(states).to(device=self.args.device)
-    # Calculate current state probabilities (online network noise already sampled)
     log_ps, _ = self.online_net(states, log=True)  # Log probabilities log p(s_t, ·; θonline)
-    _, z_anch = self.online_net(aug_states_1, log=True)
-    _, z_target = self.momentum_net(aug_states_2, log=True)
-    z_proj = torch.matmul(self.online_net.W, z_target.T)
-    logits = torch.matmul(z_anch, z_proj)
-    logits = (logits - torch.max(logits, 1)[0][:, None])
-    logits = logits * 0.1
-    labels = torch.arange(logits.shape[0]).long().to(device=self.args.device)
-    moco_loss = (nn.CrossEntropyLoss()(logits, labels)).to(device=self.args.device)
+    _, (z1,p1) = self.online_net(aug_states_1, log=True)
+    _, (z2,p2) = self.online_net(aug_states_2, log=True)
+    simsiam_loss = D(p1,z2) / 2 + D(p2,z1) / 2
+        
+    
+    
+    # Calculate current state probabilities (online network noise already sampled)
+    # log_ps, _ = self.online_net(states, log=True)  # Log probabilities log p(s_t, ·; θonline)
+    # _, z_anch = self.online_net(aug_states_1, log=True)
+    # _, z_target = self.momentum_net(aug_states_2, log=True)
+    # z_proj = torch.matmul(self.online_net.W, z_target.T)
+    # logits = torch.matmul(z_anch, z_proj)
+    # logits = (logits - torch.max(logits, 1)[0][:, None])
+    # logits = logits * 0.1
+    # labels = torch.arange(logits.shape[0]).long().to(device=self.args.device)
+    # moco_loss = (nn.CrossEntropyLoss()(logits, labels)).to(device=self.args.device)
 
     log_ps_a = log_ps[range(self.batch_size), actions]  # log p(s_t, a_t; θonline)
 
@@ -122,7 +137,7 @@ class Agent():
       m.view(-1).index_add_(0, (u + offset).view(-1), (pns_a * (b - l.float())).view(-1))  # m_u = m_u + p(s_t+n, a*)(b - l)
 
     loss = -torch.sum(m * log_ps_a, 1)  # Cross-entropy loss (minimises DKL(m||p(s_t, a_t)))
-    loss = loss + (moco_loss * self.coeff)
+    loss = loss + (simsiam_loss * self.coeff)
     self.online_net.zero_grad()
     curl_loss = (weights * loss).mean()
     curl_loss.mean().backward()  # Backpropagate importance-weighted minibatch loss
@@ -134,16 +149,16 @@ class Agent():
   def update_target_net(self):
     self.target_net.load_state_dict(self.online_net.state_dict())
 
-  def initialize_momentum_net(self):
-    for param_q, param_k in zip(self.online_net.parameters(), self.momentum_net.parameters()):
-      param_k.data.copy_(param_q.data) # update
-      param_k.requires_grad = False  # not update by gradient
+  # def initialize_momentum_net(self):
+  #   for param_q, param_k in zip(self.online_net.parameters(), self.momentum_net.parameters()):
+  #     param_k.data.copy_(param_q.data) # update
+  #     param_k.requires_grad = False  # not update by gradient
 
   # Code for this function from https://github.com/facebookresearch/moco
-  @torch.no_grad()
-  def update_momentum_net(self, momentum=0.999):
-    for param_q, param_k in zip(self.online_net.parameters(), self.momentum_net.parameters()):
-      param_k.data.copy_(momentum * param_k.data + (1.- momentum) * param_q.data) # update
+  # @torch.no_grad()
+  # def update_momentum_net(self, momentum=0.999):
+  #   for param_q, param_k in zip(self.online_net.parameters(), self.momentum_net.parameters()):
+  #     param_k.data.copy_(momentum * param_k.data + (1.- momentum) * param_q.data) # update
 
   # Save model parameters on current device (don't move model between devices)
   def save(self, path, name='model.pth'):
