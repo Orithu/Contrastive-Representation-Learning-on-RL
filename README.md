@@ -1,3 +1,11 @@
+<!--
+ * @Descripttion: 
+ * @version: 
+ * @Author: Ori
+ * @Date: 2021-03-15 22:48:50
+ * @LastEditors: Ori
+ * @LastEditTime: 2021-03-17 16:55:18
+-->
 Contrastive Representation Learning on RL
 =======
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
@@ -21,6 +29,16 @@ python3 main.py --game ms_pacman --contrastive simsiam
 ```
 
 To install all dependencies, run `bash install.sh`.
+
+## Experiments
+
+  - ms_pacman using moco contrastive learning Implementation
+
+![moco](fig/ms_pacman_moco.png)
+
+  - ms_pacman using SimSiam contrastive learning implementation
+
+![simsiam](fig/ms_pacman_simsiam.png)
 
 ## References
 
