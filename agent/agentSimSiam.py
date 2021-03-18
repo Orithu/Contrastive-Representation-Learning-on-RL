@@ -70,7 +70,7 @@ class AgentSimsiam():
 
     # for param in self.momentum_net.parameters():
     #   param.requires_grad = False
-    # self.optimiser = optim.Adam(self.online_net.parameters(), lr=args.learning_rate, eps=args.adam_eps)
+    self.optimiser = optim.Adam(self.online_net.parameters(), lr=args.learning_rate, eps=args.adam_eps)
 
   # Resets noisy weights in all linear layers (of online net only)
   def reset_noise(self):
