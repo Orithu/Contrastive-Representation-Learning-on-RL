@@ -116,10 +116,10 @@ def save_memory(memory, memory_path, disable_bzip):
 env = Env(args)
 env.train()
 action_space = env.action_space()
-
+print(args.contrastive)
 # Agent
 if args.contrastive == 'simsiam':
-  dqn = Agent(args, env)
+  dqn = AgentSimsiam(args, env)
 else: 
   dqn = Agent(args, env)
 

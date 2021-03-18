@@ -59,41 +59,41 @@ class MLP_projection(nn.Module):
     super(MLP_projection, self).__init__()
     self.layer1 = nn.Sequential(
       nn.Linear(input_dim, hidden_dim),
-      nn.BatchNorm1d(hidden_dim),
+      # nn.BatchNorm1d(hidden_dim),
       nn.ReLU(inplace=True)
     )
     self.layer2 = nn.Sequential(
       nn.Linear(hidden_dim, hidden_dim),
-      nn.BatchNorm1d(hidden_dim),
+      # nn.BatchNorm1d(hidden_dim),
       nn.ReLU(inplace=True)
     )
     self.layer3 = nn.Sequential(
       nn.Linear(hidden_dim, output_dim),
-      nn.BatchNorm1d(output_dim),
+      # nn.BatchNorm1d(output_dim),
     )
     self.num_layers = 3
-    
-    def set_layers(self, layers):
-      self.num_layers = layers
+  
+  def set_layers(self, layers):
+    self.num_layers = layers
       
-    def forward(self, x):
-      if self.num_layers == 3:
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-      elif self.num_layers == 2:
-        x = self.layer1(x)
-        x = self.layer3(x)
-      else:
-        raise ValueError(f"layer num must be 2 or 3, {self.num_layers} is not supported")
-      return x
+  def forward(self, x):
+    if self.num_layers == 3:
+      x = self.layer1(x)
+      x = self.layer2(x)
+      x = self.layer3(x)
+    elif self.num_layers == 2:
+      x = self.layer1(x)
+      x = self.layer3(x)
+    else:
+      raise ValueError(f"layer num must be 2 or 3, {self.num_layers} is not supported")
+    return x
     
 class MLP_prediction(nn.Module):
   def __init__(self, input_dim, output_dim=128, hidden_dim=256):
     super(MLP_prediction, self).__init__()
     self.layer1 = nn.Sequential(
       nn.Linear(input_dim, hidden_dim),
-      nn.BatchNorm1d(hidden_dim),
+      # nn.BatchNorm1d(hidden_dim),
       nn.ReLU(inplace=True)
     )
     self.layer2 = nn.Linear(hidden_dim, output_dim)
@@ -124,7 +124,7 @@ class DQN(nn.Module):
     self.fc_z_a = NoisyLinear(args.hidden_size, action_space * self.atoms, std_init=args.noisy_std)
 
     self.proj = MLP_projection(self.conv_output_size, hidden_dim=args.hidden_size)
-    self.pred = MLP_prediction(self.conv_output_size, hidden_dim=args.hidden_size)
+    self.pred = MLP_prediction(128, hidden_dim=args.hidden_size)
     # self.LayerNorm_C = nn.LayerNorm(256)
     # self.LayerNorm_h = nn.LayerNorm(128)
     
@@ -142,7 +142,6 @@ class DQN(nn.Module):
     
     z = self.proj(x)
     p = self.pred(z)
-    
     # h = torch.matmul(x, self.W_h) + self.b_h # Contrastive head
     # h = self.LayerNorm_C(h)
     # # h = nn.LayerNorm(h.shape[1])(h)
