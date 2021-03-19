@@ -30,6 +30,7 @@ seed = np.random.randint(12345)
 # Note that hyperparameters may originally be reported in ATARI game frames instead of agent steps
 parser = argparse.ArgumentParser(description='Rainbow')
 parser.add_argument('--id', type=str, default='default', help='Experiment ID')
+parser.add_argument('--name', type=str, default='moco', help='experiment name to save')
 parser.add_argument('--seed', type=int, default=seed, help='Random seed')
 parser.add_argument('--disable-cuda', action='store_true', help='Disable CUDA')
 parser.add_argument('--game', type=str, default='ms_pacman', choices=atari_py.list_games(), help='ATARI game')
@@ -70,7 +71,7 @@ parser.add_argument('--disable-bzip-memory', action='store_true', help='Don\'t z
 
 # Setup
 args = parser.parse_args()
-xid = 'curl-' + args.game + '-' + str(seed)
+xid = args.name + '-' + args.game + '-' + str(seed)
 args.id = xid
 
 print(' ' * 26 + 'Options')
