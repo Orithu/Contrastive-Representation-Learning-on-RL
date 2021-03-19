@@ -21,6 +21,7 @@ from tqdm import trange
 
 from agent.agent import Agent
 from agent.agentSimSiam import AgentSimsiam
+from agent.agentBYOL import AgentByol
 from env import Env
 from memory import ReplayMemory
 from test import test
@@ -58,7 +59,7 @@ parser.add_argument('--learn-start', type=int, default=int(1600), metavar='STEPS
 parser.add_argument('--evaluate', action='store_true', help='Evaluate only')
 parser.add_argument('--evaluation-interval', type=int, default=10000, metavar='STEPS', help='Number of training steps between evaluations')
 parser.add_argument('--evaluation-episodes', type=int, default=10, metavar='N', help='Number of evaluation episodes to average over')
-parser.add_argument('--contrastive', type=str, choices=['moco','simsiam'], default=None, help='whether to use Contrastive Learning')
+parser.add_argument('--contrastive', type=str, choices=['moco','simsiam','byol'], default=None, help='whether to use Contrastive Learning')
 # TODO: Note that DeepMind's evaluation method is running the latest agent for 500K frames ever every 1M steps
 parser.add_argument('--evaluation-size', type=int, default=500, metavar='N', help='Number of transitions to use for validating Q')
 parser.add_argument('--render', action='store_true', help='Display screen (testing only)')
@@ -119,8 +120,12 @@ action_space = env.action_space()
 # Agent
 if args.contrastive == 'simsiam':
   dqn = AgentSimsiam(args, env)
-else: 
+elif args.contrastive == 'moco': 
   dqn = Agent(args, env)
+elif args.contrastive == 'byol':
+  dqn = AgentByol(args, env)
+else:
+  raise NotImplementedError
 
 # If a model is provided, and evaluate is fale, presumably we want to resume, so try to load memory
 if args.model is not None and not args.evaluate:
